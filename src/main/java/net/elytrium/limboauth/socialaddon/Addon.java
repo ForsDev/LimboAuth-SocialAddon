@@ -48,6 +48,7 @@ import net.elytrium.limboauth.socialaddon.social.DiscordSocial;
 import net.elytrium.limboauth.socialaddon.social.TelegramSocial;
 import net.elytrium.limboauth.socialaddon.social.VKSocial;
 import net.elytrium.limboauth.socialaddon.utils.GeoIp;
+import net.elytrium.limboauth.storage.PlayerStorage;
 import net.elytrium.limboauth.thirdparty.com.j256.ormlite.dao.Dao;
 import net.elytrium.limboauth.thirdparty.com.j256.ormlite.dao.DaoManager;
 import net.elytrium.limboauth.thirdparty.com.j256.ormlite.stmt.UpdateBuilder;
@@ -422,16 +423,11 @@ public class Addon {
         return;
       }
 
-      Dao<RegisteredPlayer, String> playerDao = this.plugin.getPlayerStorage().getPlayerDao();
-
       String newPassword = Long.toHexString(Double.doubleToLongBits(Math.random()));
 
-      UpdateBuilder<RegisteredPlayer, String> updateBuilder = playerDao.updateBuilder();
-      updateBuilder.where().eq(RegisteredPlayer.LOWERCASE_NICKNAME_FIELD, player.getLowercaseNickname());
-      updateBuilder.updateColumnValue(RegisteredPlayer.HASH_FIELD, RegisteredPlayer.genHash(newPassword));
-      boolean updated = updateBuilder.update() != 0;
+      PlayerStorage.ChangePasswordResult result = plugin.getPlayerStorage().changePassword(player.getLowercaseNickname(), newPassword);
 
-      if (updated) {
+      if (result == PlayerStorage.ChangePasswordResult.SUCCESS) {
         this.socialManager.broadcastMessage(dbField, id,
             Placeholders.replace(Settings.IMP.MAIN.STRINGS.RESTORE_MSG, player.getLowercaseNickname(), newPassword),
             this.keyboard
