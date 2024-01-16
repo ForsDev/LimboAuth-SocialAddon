@@ -31,27 +31,12 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
-import com.velocitypowered.api.scheduler.ScheduledTask;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import java.io.File;
-import java.nio.file.Path;
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 import net.elytrium.commons.config.Placeholders;
 import net.elytrium.commons.kyori.serialization.Serializer;
 import net.elytrium.commons.kyori.serialization.Serializers;
 import net.elytrium.commons.utils.updates.UpdatesChecker;
 import net.elytrium.limboauth.LimboAuth;
-import net.elytrium.limboauth.handler.AuthSessionHandler;
 import net.elytrium.limboauth.model.RegisteredPlayer;
 import net.elytrium.limboauth.socialaddon.command.ForceSocialUnlinkCommand;
 import net.elytrium.limboauth.socialaddon.command.ValidateLinkCommand;
@@ -68,10 +53,20 @@ import net.elytrium.limboauth.thirdparty.com.j256.ormlite.dao.DaoManager;
 import net.elytrium.limboauth.thirdparty.com.j256.ormlite.stmt.UpdateBuilder;
 import net.elytrium.limboauth.thirdparty.com.j256.ormlite.support.ConnectionSource;
 import net.elytrium.limboauth.thirdparty.com.j256.ormlite.table.TableUtils;
+import net.elytrium.limboauth.util.CryptUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.ComponentSerializer;
+import org.apache.commons.logging.impl.*;
 import org.bstats.velocity.Metrics;
 import org.slf4j.Logger;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.sql.SQLException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
 
 @Plugin(
     id = "limboauth-social-addon",
@@ -86,7 +81,7 @@ import org.slf4j.Logger;
     }
 )
 public class Addon {
-
+  public static Logger LOGGER;
   private static final String INFO_BTN = "info";
   private static final String BLOCK_BTN = "block";
   private static final String TOTP_BTN = "2fa";
@@ -106,7 +101,6 @@ public class Addon {
 
   private final Map<String, Integer> codeMap;
   private final Map<String, TempAccount> requestedReverseMap;
-  private final Map<String, CachedRegisteredUser> cachedAccountRegistrations = new ConcurrentHashMap<>();
 
   private Dao<SocialPlayer, String> dao;
   private Pattern nicknamePattern;
@@ -114,14 +108,13 @@ public class Addon {
   private SocialManager socialManager;
   private List<List<AbstractSocial.ButtonItem>> keyboard;
   private GeoIp geoIp;
-  private ScheduledTask purgeCacheTask;
 
   static {
-    Objects.requireNonNull(org.apache.commons.logging.impl.LogFactoryImpl.class);
-    Objects.requireNonNull(org.apache.commons.logging.impl.Log4JLogger.class);
-    Objects.requireNonNull(org.apache.commons.logging.impl.Jdk14Logger.class);
-    Objects.requireNonNull(org.apache.commons.logging.impl.Jdk13LumberjackLogger.class);
-    Objects.requireNonNull(org.apache.commons.logging.impl.SimpleLog.class);
+    Objects.requireNonNull(LogFactoryImpl.class);
+    Objects.requireNonNull(Log4JLogger.class);
+    Objects.requireNonNull(Jdk14Logger.class);
+    Objects.requireNonNull(Jdk13LumberjackLogger.class);
+    Objects.requireNonNull(SimpleLog.class);
   }
 
   @Inject
@@ -203,61 +196,6 @@ public class Addon {
         return;
       }
 
-      for (String socialRegisterCmd : Settings.IMP.MAIN.SOCIAL_REGISTER_CMDS) {
-        if (lowercaseMessage.startsWith(socialRegisterCmd)) {
-          int desiredLength = socialRegisterCmd.length() + 1;
-
-          if (message.length() <= desiredLength) {
-            this.socialManager.broadcastMessage(dbField, id, Settings.IMP.MAIN.STRINGS.LINK_SOCIAL_REGISTER_CMD_USAGE);
-            return;
-          }
-
-          String userIndex = dbField + id;
-          CachedRegisteredUser cachedRegisteredUser = this.cachedAccountRegistrations.get(userIndex);
-          if (cachedRegisteredUser == null) {
-            this.cachedAccountRegistrations.put(userIndex, cachedRegisteredUser = new CachedRegisteredUser());
-          }
-
-          if (cachedRegisteredUser.getRegistrationAmount() >= Settings.IMP.MAIN.MAX_REGISTRATION_COUNT_PER_TIME) {
-            this.socialManager.broadcastMessage(dbField, id, Settings.IMP.MAIN.STRINGS.REGISTER_LIMIT);
-            return;
-          }
-
-          cachedRegisteredUser.incrementRegistrationAmount();
-
-          if (this.dao.queryForEq(dbField, id).size() != 0) {
-            this.socialManager.broadcastMessage(dbField, id, Settings.IMP.MAIN.STRINGS.LINK_ALREADY);
-            return;
-          }
-
-          String account = message.substring(desiredLength);
-          if (!this.nicknamePattern.matcher(account).matches()) {
-            this.socialManager.broadcastMessage(dbField, id, Settings.IMP.MAIN.STRINGS.REGISTER_INCORRECT_NICKNAME);
-            return;
-          }
-
-          String lowercaseNickname = account.toLowerCase(Locale.ROOT);
-          if (this.plugin.getPlayerDao().idExists(lowercaseNickname)) {
-            this.socialManager.broadcastMessage(dbField, id, Settings.IMP.MAIN.STRINGS.REGISTER_TAKEN_NICKNAME);
-            return;
-          }
-
-          if (!Settings.IMP.MAIN.ALLOW_PREMIUM_NAMES_REGISTRATION && this.plugin.isPremium(lowercaseNickname)) {
-            this.socialManager.broadcastMessage(dbField, id, Settings.IMP.MAIN.STRINGS.REGISTER_PREMIUM_NICKNAME);
-            return;
-          }
-
-          String newPassword = Long.toHexString(Double.doubleToLongBits(Math.random()));
-
-          RegisteredPlayer player = new RegisteredPlayer(account, "", "").setPassword(newPassword);
-          this.plugin.getPlayerDao().create(player);
-
-          this.linkSocial(lowercaseNickname, dbField, id);
-          this.socialManager.broadcastMessage(dbField, id,
-              Placeholders.replace(Settings.IMP.MAIN.STRINGS.REGISTER_SUCCESS, newPassword));
-        }
-      }
-
       for (String socialLinkCmd : Settings.IMP.MAIN.SOCIAL_LINK_CMDS) {
         if (lowercaseMessage.startsWith(socialLinkCmd)) {
           int desiredLength = socialLinkCmd.length() + 1;
@@ -295,8 +233,8 @@ public class Addon {
               return;
             }
 
-            RegisteredPlayer registeredPlayer = this.plugin.getPlayerDao().queryForId(account);
-            if (AuthSessionHandler.checkPassword(args[1], registeredPlayer, this.plugin.getPlayerDao())) {
+            RegisteredPlayer registeredPlayer = this.plugin.getPlayerStorage().getAccount(account);
+            if (CryptUtils.checkPassword(args[1], registeredPlayer)) {
               this.linkSocial(account, dbField, id);
               this.socialManager.broadcastMessage(dbField, id, Settings.IMP.MAIN.STRINGS.LINK_SUCCESS);
             } else {
@@ -382,7 +320,6 @@ public class Addon {
       } else {
         player.setBlocked(true);
 
-        this.plugin.removePlayerFromCache(player.getLowercaseNickname());
         this.server
             .getPlayer(player.getLowercaseNickname())
             .ifPresent(e -> e.disconnect(Addon.getSerializer().deserialize(Settings.IMP.MAIN.STRINGS.KICK_GAME_MESSAGE)));
@@ -452,7 +389,6 @@ public class Addon {
 
       SocialPlayer player = socialPlayerList.get(0);
       Optional<Player> proxyPlayer = this.server.getPlayer(player.getLowercaseNickname());
-      this.plugin.removePlayerFromCache(player.getLowercaseNickname());
 
       if (proxyPlayer.isPresent()) {
         proxyPlayer.get().disconnect(Addon.getSerializer().deserialize(Settings.IMP.MAIN.STRINGS.KICK_GAME_MESSAGE));
@@ -486,7 +422,7 @@ public class Addon {
         return;
       }
 
-      Dao<RegisteredPlayer, String> playerDao = this.plugin.getPlayerDao();
+      Dao<RegisteredPlayer, String> playerDao = this.plugin.getPlayerStorage().getPlayerDao();
 
       String newPassword = Long.toHexString(Double.doubleToLongBits(Math.random()));
 
@@ -564,24 +500,12 @@ public class Addon {
     TableUtils.createTableIfNotExists(source, SocialPlayer.class);
     this.dao = DaoManager.createDao(source, SocialPlayer.class);
 
-    this.plugin.migrateDb(this.dao);
-
     this.nicknamePattern = Pattern.compile(net.elytrium.limboauth.Settings.IMP.MAIN.ALLOWED_NICKNAME_REGEX);
 
     this.server.getEventManager().register(this, new LimboAuthListener(this, this.plugin, this.dao, this.socialManager,
         this.keyboard, this.geoIp
     ));
     this.server.getEventManager().register(this, new ReloadListener(this));
-
-    if (this.purgeCacheTask != null) {
-      this.purgeCacheTask.cancel();
-    }
-
-    this.purgeCacheTask = this.server.getScheduler()
-        .buildTask(this, () -> this.checkCache(this.cachedAccountRegistrations, Settings.IMP.MAIN.PURGE_REGISTRATION_CACHE_MILLIS))
-        .delay(net.elytrium.limboauth.Settings.IMP.MAIN.PURGE_CACHE_MILLIS, TimeUnit.MILLISECONDS)
-        .repeat(net.elytrium.limboauth.Settings.IMP.MAIN.PURGE_CACHE_MILLIS, TimeUnit.MILLISECONDS)
-        .schedule();
 
     CommandManager commandManager = this.server.getCommandManager();
     commandManager.unregister(Settings.IMP.MAIN.LINKAGE_MAIN_CMD);

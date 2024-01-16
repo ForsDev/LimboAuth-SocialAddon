@@ -45,8 +45,6 @@ public class Settings extends YamlConfig {
   public MAIN MAIN;
 
   public static class MAIN {
-
-    public List<String> SOCIAL_REGISTER_CMDS = List.of("!account register");
     public List<String> SOCIAL_LINK_CMDS = List.of("!account link");
     public List<String> FORCE_KEYBOARD_CMDS = List.of("!keyboard");
 
@@ -58,9 +56,6 @@ public class Settings extends YamlConfig {
 
     public String FORCE_UNLINK_MAIN_CMD = "forcesocialunlink";
     public List<String> FORCE_UNLINK_ALIAS_CMD = List.of("forceunlink");
-
-    @Comment("Should we allow registration with premium usernames using social-register-cmds")
-    public boolean ALLOW_PREMIUM_NAMES_REGISTRATION = false;
 
     public boolean ENABLE_NOTIFY = true;
 
@@ -105,12 +100,6 @@ public class Settings extends YamlConfig {
         "true - players with social 2FA enabled can login without the password"
     })
     public boolean AUTH_2FA_WITHOUT_PASSWORD = false;
-
-    @Comment("How long in milliseconds the player should wait before registering new account")
-    public long PURGE_REGISTRATION_CACHE_MILLIS = 86400000;
-
-    @Comment("How many accounts can register the player per time (per purge-registration-cache-millis)")
-    public int MAX_REGISTRATION_COUNT_PER_TIME = 3;
 
     @Create
     public MAIN.VK VK;
@@ -217,21 +206,15 @@ public class Settings extends YamlConfig {
       public String LINK_CMD_USAGE = "{PRFX} Send '!account link {NICKNAME}' to our Social Bot{NL} VK: vk.com/123{NL} DS: Bot#0000{NL} TG: @bot";
       @Placeholders({"{NICKNAME}"})
       public String LINK_WRONG_CODE = "{PRFX} Wrong code, run '!account link {NICKNAME}' again";
+      public String LINK_CONFIRM = "{PRFX} Введите эту команду снова, чтобы подтвердить привязку аккаунта. НЕ ВВОДИТЕ ЭТУ КОМАНДУ, ЕСЛИ ВАМ ЕЁ ОТПРАВИЛ ДРУГОЙ ИГРОК!";
       public String LINK_SUCCESS_GAME = "{PRFX} Social was successfully linked";
       public String LINK_SUCCESS = "✅ Social was successfully linked{NL}Use '!keyboard' to show keyboard";
       public String LINK_ALREADY = "Account is already linked";
-      public String LINK_SOCIAL_REGISTER_CMD_USAGE = "You didn't specify a nickname. Enter '!account register <nickname>'";
       public String LINK_SOCIAL_CMD_USAGE = "You didn't specify a nickname. Enter '!account link <nickname>'";
       public String LINK_UNKNOWN_ACCOUNT = "There is no account with this nickname";
       @Placeholders({"{CODE}"})
       public String LINK_CODE = "🔑 Enter '/addsocial {CODE}' in game to complete account linking";
       public String LINK_WRONG_PASSWORD = "Wrong password";
-      public String REGISTER_INCORRECT_NICKNAME = "There is no account with this nickname";
-      public String REGISTER_TAKEN_NICKNAME = "This nickname is already taken";
-      public String REGISTER_PREMIUM_NICKNAME = "This nickname belongs to a premium player";
-      public String REGISTER_LIMIT = "You've tried to registered numerous times!";
-      @Placeholders({"{PASSWORD}"})
-      public String REGISTER_SUCCESS = "✅ Account was successfully registered{NL}Your password: {PASSWORD}{NL}Use '!keyboard' to show keyboard";
 
       public String FORCE_UNLINK_CMD_USAGE = "{PRFX} Usage: /forcesocialunregister <username>";
 
@@ -286,7 +269,6 @@ public class Settings extends YamlConfig {
       public String BLOCK_DISABLED = "No";
       public String TOTP_ENABLED = "Enabled";
       public String TOTP_DISABLED = "Disabled";
-
       public String KICK_BTN = "Kick";
       public String TOGGLE_NOTIFICATION_BTN = "Toggle notifications";
       public String TOGGLE_2FA_BTN = "Toggle 2FA";

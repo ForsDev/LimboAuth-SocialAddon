@@ -37,6 +37,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
+
+import net.elytrium.limboauth.socialaddon.Addon;
 import net.elytrium.limboauth.socialaddon.Settings;
 import net.elytrium.limboauth.socialaddon.model.SocialPlayer;
 
@@ -123,7 +125,7 @@ public class VKSocial extends AbstractSocial {
         } catch (LongPollServerKeyExpiredException ignored) {
           // ignored
         } catch (ClientException | ApiException e) {
-          e.printStackTrace(); // printStackTrace is necessary there
+          Addon.LOGGER.error("Error occurred:", e);
           try {
             Thread.sleep(5000);
           } catch (InterruptedException ex) {
@@ -206,7 +208,7 @@ public class VKSocial extends AbstractSocial {
       }
     } catch (ClientException | ApiException e) {
       if (Settings.IMP.MAIN.DEBUG) {
-        e.printStackTrace(); // printStackTrace is necessary there
+        Addon.LOGGER.error("Error occurred:", e);
       }
     }
   }
@@ -243,7 +245,7 @@ public class VKSocial extends AbstractSocial {
             .sendMessageEventAnswer(this.actor, eventId, userId, peerId)
             .execute();
       } catch (ClientException | ApiException e) {
-        e.printStackTrace(); // printStackTrace is necessary there
+        Addon.LOGGER.error("Error occurred:", e);
       }
 
       if (payload.has("button")) {

@@ -19,6 +19,8 @@ package net.elytrium.limboauth.socialaddon.social;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
+import net.elytrium.limboauth.socialaddon.Addon;
 import net.elytrium.limboauth.socialaddon.Settings;
 import net.elytrium.limboauth.socialaddon.model.SocialPlayer;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -160,10 +162,10 @@ public class TelegramSocial extends AbstractSocial {
         this.sendApiMethod(sendMessage);
       } catch (TelegramApiRequestException e) {
         if (Settings.IMP.MAIN.DEBUG) {
-          e.printStackTrace(); // printStackTrace is necessary there
+          Addon.LOGGER.error("Error occurred:", e);
         }
       } catch (TelegramApiException e) {
-        e.printStackTrace(); // printStackTrace is necessary there
+        Addon.LOGGER.error("Error occurred:", e);
       }
     }
 

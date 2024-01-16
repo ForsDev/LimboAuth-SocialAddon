@@ -37,6 +37,7 @@ import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
+import net.elytrium.limboauth.socialaddon.Addon;
 import net.elytrium.limboauth.socialaddon.Settings;
 import net.elytrium.limboauth.socialaddon.model.SocialPlayer;
 import org.jetbrains.annotations.NotNull;
@@ -149,13 +150,13 @@ public class DiscordSocial extends AbstractSocial {
             .submit()
             .exceptionally(e -> {
               if (Settings.IMP.MAIN.DEBUG) {
-                e.printStackTrace(); // printStackTrace is necessary there
+                Addon.LOGGER.error("Error occurred:", e);
               }
               return null;
             }))
         .exceptionally(e -> {
           if (Settings.IMP.MAIN.DEBUG) {
-            e.printStackTrace(); // printStackTrace is necessary there
+            Addon.LOGGER.error("Error occurred:", e);
           }
           return null;
         });

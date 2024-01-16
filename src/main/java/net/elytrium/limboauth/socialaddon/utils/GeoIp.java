@@ -32,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.zip.GZIPInputStream;
 import net.elytrium.commons.config.Placeholders;
+import net.elytrium.limboauth.socialaddon.Addon;
 import net.elytrium.limboauth.socialaddon.Settings;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -98,7 +99,7 @@ public class GeoIp {
 
       return Placeholders.replace(Settings.IMP.MAIN.GEOIP.FORMAT, city, country, leastSpecificSubdivision, mostSpecificSubdivision);
     } catch (IOException | GeoIp2Exception e) {
-      e.printStackTrace(); // printStackTrace is necessary there
+      Addon.LOGGER.error("Error occurred:", e);
       return Settings.IMP.MAIN.GEOIP.DEFAULT_VALUE;
     }
   }

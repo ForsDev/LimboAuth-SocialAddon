@@ -113,7 +113,6 @@ public class LimboAuthListener {
           LimboPlayer limboPlayer = authSession.getPlayer();
           limboPlayer.disconnect();
           Player proxyPlayer = limboPlayer.getProxyPlayer();
-          this.plugin.cacheAuthUser(proxyPlayer);
           this.plugin.updateLoginData(proxyPlayer);
         } else {
           authSession.getEvent().complete(TaskEvent.Result.NORMAL);

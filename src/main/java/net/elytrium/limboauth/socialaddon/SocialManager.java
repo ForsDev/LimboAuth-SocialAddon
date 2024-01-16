@@ -17,24 +17,27 @@
 
 package net.elytrium.limboauth.socialaddon;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import net.elytrium.limboauth.socialaddon.model.SocialPlayer;
 import net.elytrium.limboauth.socialaddon.social.AbstractSocial;
 import net.elytrium.limboauth.socialaddon.social.SocialButtonListenerAdapter;
 import net.elytrium.limboauth.socialaddon.social.SocialInitializationException;
 import net.elytrium.limboauth.socialaddon.social.SocialMessageListenerAdapter;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 public class SocialManager {
 
-  private final LinkedList<AbstractSocial> socialList;
-  private final LinkedList<SocialMessageListenerAdapter> messageEvents = new LinkedList<>();
-  private final HashMap<String, SocialButtonListenerAdapter> buttonEvents = new HashMap<>();
-  private final HashMap<String, String> buttonIdMap = new HashMap<>();
+  private final Queue<AbstractSocial> socialList;
+  private final Queue<SocialMessageListenerAdapter> messageEvents = new ConcurrentLinkedQueue<>();
+  private final Map<String, SocialButtonListenerAdapter> buttonEvents = new ConcurrentHashMap<>();
+  private final Map<String, String> buttonIdMap = new ConcurrentHashMap<>();
 
   public SocialManager(AbstractSocial.Constructor... socialList) {
-    this.socialList = new LinkedList<>();
+    this.socialList = new ConcurrentLinkedQueue<>();
     for (AbstractSocial.Constructor function : socialList) {
       try {
         AbstractSocial social = function.newInstance(this::onMessageReceived, this::onButtonClicked);
@@ -42,7 +45,7 @@ public class SocialManager {
           this.socialList.add(social);
         }
       } catch (SocialInitializationException e) {
-        e.printStackTrace(); // printStackTrace is necessary there
+        Addon.LOGGER.error("Error occurred:", e);
       }
     }
   }
@@ -59,7 +62,7 @@ public class SocialManager {
       } catch (Exception e) {
         this.broadcastMessage(dbField, id, Settings.IMP.MAIN.STRINGS.SOCIAL_EXCEPTION_CAUGHT);
         if (Settings.IMP.MAIN.DEBUG) {
-          e.printStackTrace(); // printStackTrace is necessary there
+          Addon.LOGGER.error("Error occurred:", e);
         }
       }
     });
@@ -73,7 +76,7 @@ public class SocialManager {
       } catch (Exception e) {
         this.broadcastMessage(dbField, id, Settings.IMP.MAIN.STRINGS.SOCIAL_EXCEPTION_CAUGHT);
         if (Settings.IMP.MAIN.DEBUG) {
-          e.printStackTrace(); // printStackTrace is necessary there
+          Addon.LOGGER.error("Error occurred:", e);
         }
       }
     }
@@ -96,7 +99,7 @@ public class SocialManager {
       try {
         social.start();
       } catch (SocialInitializationException e) {
-        e.printStackTrace(); // printStackTrace is necessary there
+        Addon.LOGGER.error("Error occurred:", e);
       }
     }
   }
@@ -130,10 +133,6 @@ public class SocialManager {
         this.buttonIdMap.put(item.getValue(), item.getId());
       }
     }
-  }
-
-  public void registerButton(AbstractSocial.ButtonItem item) {
-    this.buttonIdMap.put(item.getValue(), item.getId());
   }
 
   public void broadcastMessage(SocialPlayer player, String message, List<List<AbstractSocial.ButtonItem>> item) {
