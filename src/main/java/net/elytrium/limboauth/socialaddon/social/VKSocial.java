@@ -85,7 +85,7 @@ public class VKSocial extends AbstractSocial {
       throw new SocialInitializationException(e);
     }
 
-    new Thread(() -> {
+    Thread botThread = new Thread(() -> {
       while (this.polling) {
         try {
           GetLongPollServerResponse serverInfo = this.vk.groups().getLongPollServer(this.actor, this.actor.getGroupId()).execute();
@@ -133,7 +133,25 @@ public class VKSocial extends AbstractSocial {
           }
         }
       }
-    }).start();
+    });
+    botThread.setUncaughtExceptionHandler((t, e) -> {
+        try {
+          restartPolling();
+        } catch (SocialInitializationException ex) {
+          Addon.LOGGER.error("Error occurred:", ex);
+        }
+    });
+    botThread.start();
+  }
+
+  private void restartPolling() throws SocialInitializationException {
+    stop();
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+    }
+    start();
   }
 
   @Override
